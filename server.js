@@ -4,6 +4,10 @@ const url = require('url');
 const os = require('os');
 const querystring = require('querystring');
 const wget = require('node-wget');
+const formidable = require('formidable');
+const torrentStream = require('torrent-stream');
+var Client = require('node-torrent');
+var client = new Client({logLevel: 'DEBUG'});
 const ini = require('ini');
 const path = require('path');
 function loadConfig(path) {
@@ -45,7 +49,11 @@ function downloadUrl(url, downloadFolder, index) {
   return new Promise((resolve, reject) => {
    // const filePath = path.join(downloadFolder, filename);
 
-   const fileName = encodeURIComponent(path.basename(url));
+   let fileName = (path.basename(url));
+   //beautify fileName by removing %20 and other stuff
+   fileName = decodeURIComponent(fileName);
+
+   const extension = path.extname(fileName);
     
    
    let filePath = downloadFolder;
@@ -60,6 +68,9 @@ function downloadUrl(url, downloadFolder, index) {
           reject(error);
         } else {
           console.log(`Téléchargé : ${url}`);
+          if (extension === '.torrent') {
+            downloadTorrentIfTorrentFile(filePath + '/torr-'+fileName, downloadFolder);
+          }
           resolve(response);
         }
       }
@@ -67,6 +78,56 @@ function downloadUrl(url, downloadFolder, index) {
   });
 
 }
+
+
+
+async function downloadTorrentIfTorrentFile(filePath, downloadFolder) {
+  // Vérifiez si l'extension du fichier est ".torrent"
+  if (!filePath.endsWith('.torrent')) {
+    console.log('Ce n\'est pas un fichier torrent.');
+    return;
+  }
+
+
+  console.log("Torrent file detected",filePath);
+  var torrent = client.addTorrent(filePath);
+
+  // when the torrent completes, move it's files to another area
+  torrent.on('complete', function() {
+      console.log('complete!');
+      torrent.files.forEach(function(file) {
+          var newPath = downloadFolder+'/' + file.path;
+          fs.rename(file.path, newPath);
+          // while still seeding need to make sure file.path points to the right place
+          file.path = newPath;
+      });
+  });
+  torrent.on('ready', function() {
+      console.log('ready!');
+      torrent.files.forEach(function(file) {
+          console.log('filename:', file.name);
+          console.log('size:', file.length);
+      });
+  });
+  torrent.on('download', function(chunkSize) {
+      console.log('chunkSize:', chunkSize);
+  });
+  torrent.on('upload', function(chunkSize) {
+      console.log('chunkSize:', chunkSize);
+  });
+  
+
+}
+
+
+
+
+
+
+
+
+
+
 
 function handleAliveAction(res) {
   const cpuUsage = os.loadavg();
@@ -80,6 +141,7 @@ function handleListAction(res, folder) {
   fs.readdir(folder, (err, files) => {
     if (err) {
       res.statusCode = 500;
+
       res.end('Erreur interne');
       console.log('Erreur interne');
       return;
@@ -140,7 +202,7 @@ function handleDeleteAction(res, queryParams, folder) {
     if (err) {
       res.statusCode = 500;
       res.end('Erreur interne');
-      console.log('Erreur interne');
+      console.log('Erreur interne',err);
       return;
     }
     res.statusCode = 200;
@@ -171,6 +233,59 @@ function handlePostRequest(req, res) {
   });
 }
 
+function handleUploadAction(req, res, folder) {
+
+
+
+
+
+
+
+
+
+
+  
+  //handle formdata llike this formData.append('file'+i, file);
+  const form = new formidable.IncomingForm();
+  form.uploadDir = folder;
+  form.keepExtensions = true;
+  form.multiples = true;
+
+  //keep same name as the file uploaded
+  form.on('fileBegin', function (name, file) {
+    file.path = form.uploadDir + "/" + file.name;
+    file.filepath= form.uploadDir + "/" + file.originalFilename;
+  });
+  form.on('file', function (name, file) {
+    console.log('fichier finiu')
+    downloadTorrentIfTorrentFile(file.filepath , folder);
+
+  });
+
+  form.parse(req, (err, fields, files) => {
+    if (err) {
+      res.statusCode = 500;
+      res.end('Erreur interne');
+      console.log('Erreur interne');
+      return;
+    }
+
+
+    res.statusCode = 200;
+    res.end(JSON.stringify({message:'Fichier uploadé',success:true}));
+    //get the file path
+
+
+
+
+
+    console.log('Fichier uploadé');
+  });
+
+
+}
+
+
 function handleRequest(req, res) {
   const parsedUrl = url.parse(req.url);
   const queryParams = querystring.parse(parsedUrl.query);
@@ -181,10 +296,7 @@ function handleRequest(req, res) {
     return;
   }
 
-  if (req.method === 'POST') {
-    handlePostRequest(req, res);
-    return;
-  }
+
 
   const action = queryParams.action;
   switch (action) {
@@ -200,6 +312,13 @@ function handleRequest(req, res) {
     case 'delete':
       handleDeleteAction(res, queryParams, config.folder);
       break;
+    case 'upload':
+      handleUploadAction(req, res, config.folder);
+      break;
+    case 'urls':
+      handlePostRequest(req, res);
+      break;
+
     default:
       handleDefault(res);
   }

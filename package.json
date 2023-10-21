@@ -1,7 +1,10 @@
 {
+    "type": "commonjs",
     "dependencies": {
-      "ini": "^4.1.1",
-      "node-wget": "^0.4.3"
+        "formidable": "^3.5.1",
+        "ini": "^4.1.1",
+        "node-torrent": "^0.2.2",
+        "node-wget": "^0.4.3",
+        "torrent-stream": "^1.2.1"
     }
-  }
-  
+}
