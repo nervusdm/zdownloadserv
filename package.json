@@ -1,0 +1,7 @@
+{
+    "dependencies": {
+      "ini": "^4.1.1",
+      "node-wget": "^0.4.3"
+    }
+  }
+  
