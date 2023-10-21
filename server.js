@@ -5,7 +5,7 @@ const os = require('os');
 const querystring = require('querystring');
 const wget = require('node-wget');
 const ini = require('ini');
-
+const path = require('path');
 function loadConfig(path) {
   const config = ini.parse(fs.readFileSync(path, 'utf-8'));
   if (!config || !config.port || !config.folder || !config.token_pass) {
@@ -34,6 +34,36 @@ function formatFileSize(bytes) {
 
 async function downloadUrls(urlsArray, res) {
   // Votre logique ici...
+
+  await Promise.all(
+    urlsArray.map((url, index) => downloadUrl(url, config.folder, index))
+  );
+  console.log('Tous les téléchargements sont terminés.');
+}
+
+function downloadUrl(url, downloadFolder, index) {
+  return new Promise((resolve, reject) => {
+   // const filePath = path.join(downloadFolder, filename);
+
+   const fileName = path.basename(url);
+    let filePath = downloadFolder;
+    wget(
+      {
+        url: url,
+        dest: filePath + '/'+fileName,
+      },
+      (error, response) => {
+        if (error) {
+          console.error(`Erreur lors du téléchargement de ${url}:`, error);
+          reject(error);
+        } else {
+          console.log(`Téléchargé : ${url}`);
+          resolve(response);
+        }
+      }
+    );
+  });
+
 }
 
 function handleAliveAction(res) {
