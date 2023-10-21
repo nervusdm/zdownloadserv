@@ -45,8 +45,10 @@ function downloadUrl(url, downloadFolder, index) {
   return new Promise((resolve, reject) => {
    // const filePath = path.join(downloadFolder, filename);
 
-   const fileName = path.basename(url);
-    let filePath = downloadFolder;
+   const fileName = encodeURIComponent(path.basename(url));
+    
+   
+   let filePath = downloadFolder;
     wget(
       {
         url: url,
