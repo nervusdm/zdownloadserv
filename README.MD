@@ -1,6 +1,6 @@
 # ZDownload Server
 
-This server works in tandem with the [ZServDownload Chrome extension](https://github.com/nervusdm/ZServDownload) to make downloading files from URLs easier.
+This server works in tandem with the [Zdownloadchrome Chrome extension](https://github.com/nervusdm/zdownloadchrome) to make downloading files from URLs easier.
 
 ## Prerequisites
 
